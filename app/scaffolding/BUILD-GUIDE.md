@@ -38,10 +38,27 @@ macOS edges onto it.
 
 ## Step 2: Make it a menu bar agent (no Dock icon)
 
-1. Select the project > your target > Info tab.
-2. Add a row: `Application is agent (UIElement)` = `YES`
-   (raw key: `LSUIElement` = `YES`).
-3. Target > General > Minimum Deployments: macOS 14.0.
+Recent Xcode (16+) auto-generates the Info.plist, so there is usually no "Info"
+tab row to edit. Use Build Settings instead:
+
+1. Click the project (blue icon at the top of the navigator).
+2. Under TARGETS, select Cowriter.
+3. Open the Build Settings tab; select All + Combined.
+4. Search `agent` (or `UIElement`).
+5. Set `Application is agent (UIElement)` (raw key `INFOPLIST_KEY_LSUIElement`) to YES.
+
+Alternative (no Build Settings edit): drop the Dock icon in code by adding this
+to the `CowriterApp` struct:
+
+```swift
+init() {
+    NSApplication.shared.setActivationPolicy(.accessory)
+}
+```
+
+Do one of the two, not both. Then set the minimum deployment:
+
+6. Target > General > Minimum Deployments > macOS = 14.0.
 
 ---
 
