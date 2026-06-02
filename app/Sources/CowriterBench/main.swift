@@ -1,5 +1,13 @@
-// Benchmark harness for the MLX inference backend. Compiles against
-// mlx-swift-lm @ main; runtime still needs a real MLX model on real hardware.
+// Benchmark harness for the MLX inference backend. Compiles and links against
+// mlx-swift-lm @ main.
+//
+// KNOWN LIMITATION: running this via a bare `swift run` fails at startup with
+// "Failed to load the default metallib" because plain SwiftPM CLI builds do not
+// compile/bundle MLX's Metal shader library (`mlx-swift_Cmlx.bundle/default.metallib`).
+// MLX initializes Metal at framework startup, so even `--cpu` cannot bypass it
+// from the CLI. To actually run inference, build through Xcode (an app target or
+// a command-line-tool target in an Xcode project), which performs the Metal
+// compile + resource bundling. See scaffolding/BUILD-GUIDE.md.
 //
 // Measures, per model:
 //   - model load time
@@ -17,6 +25,7 @@
 import Foundation
 import CowriterCore
 import CowriterInferenceMLX
+import MLX
 
 // MARK: - Arguments
 
@@ -24,6 +33,10 @@ struct Args {
     var modelPath: String?
     var prompt: String = "Thanks for"
     var runs: Int = 5
+    /// Force the CPU backend. Useful when the Metal shader library is not
+    /// available (e.g. running as a bare `swift run` CLI rather than an app
+    /// bundle). CPU latency is not representative of the shipping GPU path.
+    var cpu: Bool = false
 }
 
 func parseArgs() -> Args {
@@ -34,6 +47,7 @@ func parseArgs() -> Args {
         case "--model-path": args.modelPath = it.next()
         case "--prompt":     args.prompt = it.next() ?? args.prompt
         case "--runs":       args.runs = Int(it.next() ?? "") ?? args.runs
+        case "--cpu":        args.cpu = true
         default:
             FileHandle.standardError.write(Data("Unknown argument: \(arg)\n".utf8))
         }
@@ -122,6 +136,12 @@ guard let modelPath = args.modelPath else {
     exit(2)
 }
 let modelDir = URL(fileURLWithPath: modelPath)
+
+if args.cpu {
+    // Route all MLX ops to the CPU backend (skips the Metal shader library).
+    MLX.Device.setDefault(device: Device(.cpu))
+    print("(running on CPU backend; latency is NOT representative of the GPU path)\n")
+}
 
 // The bench points every descriptor at the same local dir; in a real run you
 // would supply one directory per model tier.

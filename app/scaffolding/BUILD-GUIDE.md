@@ -118,9 +118,12 @@ package alone to shake out backend errors:
 swift build           # now compiles CowriterInferenceMLX against MLX
 ```
 
-Fix the `// VERIFY:` sites in `MLXInferenceEngine.swift` against whatever
-`mlx-swift-examples` API your resolved version exposes (the generate call and the
-event/case names are the usual ones to adjust).
+Note: `MLXInferenceEngine.swift` and `CowriterBench` already compile against
+`mlx-swift-lm` @ main (the LLM libraries moved there from `mlx-swift-examples`).
+The package manifest in this repo already declares `mlx-swift-lm`,
+`swift-transformers` (for the tokenizer-loader macro), and `mlx-swift`, so
+`swift build` succeeds. The remaining `// VERIFY:` work is in the app-layer
+files (`CowriterApp/`), not the backend.
 
 ---
 
@@ -134,21 +137,34 @@ huggingface-cli download Qwen/Qwen3-1.7B-MLX-4bit \
   --local-dir ~/Library/Application\ Support/Cowriter/models/qwen3-1.7b
 ```
 
-Wire and run the benchmark (move `scaffolding/CowriterBench` into `Sources/` and
-add the `CowriterBench` executable target per `scaffolding/README.md`), then:
+The model download is verified working (the snapshot lands at the path above).
+
+IMPORTANT - the benchmark cannot run via `swift run`. MLX initializes Metal at
+framework startup and needs `mlx-swift_Cmlx.bundle/default.metallib`, which a
+plain SwiftPM CLI build does not compile or bundle. So this fails at startup:
 
 ```bash
-swift run cowriter-bench \
-  --model-path ~/Library/Application\ Support/Cowriter/models/qwen3-1.7b \
-  --prompt "Thanks for"
+swift run cowriter-bench --model-path .../qwen3-1.7b   # -> "Failed to load the default metallib"
 ```
 
-Read the first-token number.
+To run the benchmark you must build it through Xcode so the Metal library is
+compiled and bundled:
+
+1. In your Cowriter Xcode project, add a new target: macOS > Command Line Tool, name `CowriterBench`.
+2. Add the `Sources/CowriterBench/main.swift` file to it (and link `CowriterCore`,
+   `CowriterInferenceMLX`, and the `MLX` product).
+3. Edit the scheme's Run arguments: `--model-path <abs path to qwen3-1.7b>`.
+4. Run. Xcode performs the Metal compile, so the metallib loads.
+
+Then read the first-token number.
 - Under ~100 ms: good, proceed.
 - Over: try `Qwen3-0.6B-MLX-4bit` instead and re-run.
 
 Record the result in `plan/07-risks-open-questions.md` Q1. Do not build UX on a
 model that misses the latency bar.
+
+(The same metallib requirement is why the menu bar app must be built through
+Xcode too, not `swift run`.)
 
 ---
 

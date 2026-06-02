@@ -21,7 +21,10 @@
           .package(url: "https://github.com/ml-explore/mlx-swift-lm.git", branch: "main"),
           // The MLXHuggingFace tokenizer-loader macro expands to code that calls
           // `Tokenizers.AutoTokenizer`, so the consumer must supply swift-transformers.
-          .package(url: "https://github.com/huggingface/swift-transformers", from: "1.3.0")
+          .package(url: "https://github.com/huggingface/swift-transformers", from: "1.3.0"),
+          // Declared directly (also a transitive dep of mlx-swift-lm) so the bench
+          // can import MLX and force the CPU backend. Range matches mlx-swift-lm.
+          .package(url: "https://github.com/ml-explore/mlx-swift", .upToNextMinor(from: "0.31.3"))
       ],
       targets: [
           // Headless, fully-testable core: types, prompt building, the suggestion
@@ -52,7 +55,11 @@
           // latency, tokens/sec, and resident memory.
           .executableTarget(
               name: "CowriterBench",
-              dependencies: ["CowriterCore", "CowriterInferenceMLX"]
+              dependencies: [
+                  "CowriterCore",
+                  "CowriterInferenceMLX",
+                  .product(name: "MLX", package: "mlx-swift")
+              ]
           ),
           .testTarget(
               name: "CowriterCoreTests",
