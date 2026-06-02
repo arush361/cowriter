@@ -1,6 +1,7 @@
-// ⚠️ UNVERIFIED SCAFFOLDING — never compiled or run. See ../README.md.
+// Benchmark harness for the MLX inference backend. Compiles against
+// mlx-swift-lm @ main; runtime still needs a real MLX model on real hardware.
 //
-// Benchmark harness for the MLX inference backend. Measures, per model:
+// Measures, per model:
 //   - model load time
 //   - first-token latency  (the number the product lives or dies on: < 100 ms)
 //   - full short-suggestion latency
@@ -70,15 +71,15 @@ struct Result {
     var tokensPerSec: Double { tokenCount > 0 ? Double(tokenCount) / fullSeconds : 0 }
 }
 
-func clock() -> Double { Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000_000 }
+func monotonicSeconds() -> Double { Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000_000 }
 
 func benchmark(model: ModelDescriptor, modelDir: URL, prompt: String, runs: Int) async throws -> Result {
     let engine = MLXInferenceEngine(resolveLocalPath: { _ in modelDir })
 
     let rssBefore = residentBytes()
-    let loadStart = clock()
+    let loadStart = monotonicSeconds()
     try await engine.load(model)
-    let loadSeconds = clock() - loadStart
+    let loadSeconds = monotonicSeconds() - loadStart
     let rssAfter = residentBytes()
 
     // Warm-up run (excluded from timings): first inference pays one-time costs.
@@ -89,17 +90,14 @@ func benchmark(model: ModelDescriptor, modelDir: URL, prompt: String, runs: Int)
     var tokenCounts: [Int] = []
 
     for _ in 0..<runs {
-        let start = clock()
-        var firstTokenAt: Double?
-        var count = 0
-        try await engine.stream(prompt: prompt, maxTokens: SuggestionLength.medium.maxTokens) { _ in
-            if firstTokenAt == nil { firstTokenAt = clock() }
-            count += 1
-        }
-        let end = clock()
-        firstTokenTimes.append((firstTokenAt ?? end) - start)
-        fullTimes.append(end - start)
-        tokenCounts.append(count)
+        // generateTimed measures first-token and total latency inside the model's
+        // isolation, so timing is not skewed by actor hops.
+        let stats = try await engine.generateTimed(
+            prompt: prompt, maxTokens: SuggestionLength.medium.maxTokens
+        )
+        firstTokenTimes.append(stats.firstTokenSeconds)
+        fullTimes.append(stats.totalSeconds)
+        tokenCounts.append(stats.tokenCount)
     }
 
     func median(_ xs: [Double]) -> Double {
