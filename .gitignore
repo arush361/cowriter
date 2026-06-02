@@ -11,3 +11,8 @@
 DerivedData/
 *.xcodeproj
 .DS_Store
+
+# xcodebuild derived data
+.xcode-build/
+app/.xcode-build/
+*.profraw

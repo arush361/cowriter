@@ -99,6 +99,13 @@ func benchmark(model: ModelDescriptor, modelDir: URL, prompt: String, runs: Int)
     // Warm-up run (excluded from timings): first inference pays one-time costs.
     _ = try? await engine.generate(prompt: prompt, maxTokens: 8)
 
+    // Print one real continuation so we can eyeball output quality + confirm
+    // non-thinking mode (no <think> trace).
+    let sample = try await engine.generateTimed(
+        prompt: prompt, maxTokens: SuggestionLength.medium.maxTokens
+    )
+    print("sample continuation: \"\(prompt)\(sample.text)\"\n")
+
     var firstTokenTimes: [Double] = []
     var fullTimes: [Double] = []
     var tokenCounts: [Int] = []

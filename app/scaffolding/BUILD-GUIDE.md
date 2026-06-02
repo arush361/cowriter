@@ -141,30 +141,42 @@ The model download is verified working (the snapshot lands at the path above).
 
 IMPORTANT - the benchmark cannot run via `swift run`. MLX initializes Metal at
 framework startup and needs `mlx-swift_Cmlx.bundle/default.metallib`, which a
-plain SwiftPM CLI build does not compile or bundle. So this fails at startup:
+plain SwiftPM CLI build does NOT compile or bundle:
 
 ```bash
-swift run cowriter-bench --model-path .../qwen3-1.7b   # -> "Failed to load the default metallib"
+swift run cowriter-bench --model-path .../model   # -> "Failed to load the default metallib"
 ```
 
-To run the benchmark you must build it through Xcode so the Metal library is
-compiled and bundled:
+The fix is to build with `xcodebuild` instead of `swift build` (NO Xcode GUI
+needed). xcodebuild uses the full Xcode build system, which compiles + bundles
+the Metal library. This is verified working:
 
-1. In your Cowriter Xcode project, add a new target: macOS > Command Line Tool, name `CowriterBench`.
-2. Add the `Sources/CowriterBench/main.swift` file to it (and link `CowriterCore`,
-   `CowriterInferenceMLX`, and the `MLX` product).
-3. Edit the scheme's Run arguments: `--model-path <abs path to qwen3-1.7b>`.
-4. Run. Xcode performs the Metal compile, so the metallib loads.
+```bash
+cd app
+xcodebuild -scheme cowriter-bench -destination 'platform=macOS,arch=arm64' \
+  -derivedDataPath .xcode-build -skipMacroValidation build
+# (-skipMacroValidation approves the MLXHuggingFace macro non-interactively)
 
-Then read the first-token number.
-- Under ~100 ms: good, proceed.
-- Over: try `Qwen3-0.6B-MLX-4bit` instead and re-run.
+.xcode-build/Build/Products/Debug/cowriter-bench \
+  --model-path "$HOME/Library/Application Support/Cowriter/models/<model>"
+```
 
-Record the result in `plan/07-risks-open-questions.md` Q1. Do not build UX on a
-model that misses the latency bar.
+Read the first-token number. Under ~100 ms = good.
 
-(The same metallib requirement is why the menu bar app must be built through
-Xcode too, not `swift run`.)
+### Verified results (June 2, M-series)
+- Real GPU inference confirmed running via the xcodebuild route.
+- `Qwen3-1.7B-MLX-4bit`: first-token ~37 ms BUT it is a **thinking** model - it
+  emits a `<think>...</think>` trace that consumes the whole short token budget
+  before producing any continuation. **Unsuitable for autocomplete.**
+- `Qwen2.5-1.5B-Instruct-4bit` (Apache 2.0, **non-thinking**): first-token
+  ~34-41 ms, full short suggestion 67-314 ms, clean continuations
+  (e.g. "Let me know if you" -> "are interested in joining our team."). This is
+  the right kind of model for the use case.
+
+Lesson: pick a NON-thinking instruct (or base) model. See plan/07 Q2/Q5.
+
+(The same metallib requirement is why the menu bar app must also be built via
+Xcode / xcodebuild, not `swift run`.)
 
 ---
 

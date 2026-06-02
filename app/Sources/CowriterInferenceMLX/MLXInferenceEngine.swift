@@ -32,10 +32,17 @@ public actor MLXInferenceEngine: InferenceEngine {
     public var temperature: Float = 0.2
     public var topP: Float = 0.9
 
-    // Note on Qwen3 "thinking": we feed a bare completion prompt via
-    // `UserInput(prompt: .text(...))`, which bypasses the chat template, so no
-    // `<think>` trace is produced. (Going through `.chat`/`.messages` would
-    // apply the template and require `enable_thinking: false`.)
+    /// Qwen3 is a hybrid reasoning model. We MUST disable thinking for inline
+    /// autocomplete, otherwise it emits a `<think>` trace before any usable text.
+    /// `/no_think` only works through the chat template, so we go through the
+    /// chat path and pass `enable_thinking: false` via additionalContext (which
+    /// the Qwen3 Jinja template reads). A system message frames the instruct
+    /// model as a pure completion engine rather than a chatbot.
+    private let systemInstruction = """
+    You are an inline autocomplete engine. Continue the user's text exactly where \
+    it stops, in their voice. Output ONLY the continuation that comes next, with \
+    no preamble, no quotes, no explanation, and no restating of their text.
+    """
 
     public init(resolveLocalPath: @escaping @Sendable (ModelDescriptor) -> URL) {
         self.resolveLocalPath = resolveLocalPath
@@ -78,11 +85,18 @@ public actor MLXInferenceEngine: InferenceEngine {
         guard let container else { throw InferenceError.modelNotLoaded }
         let temperature = self.temperature
         let topP = self.topP
+        let systemInstruction = self.systemInstruction
 
         do {
             return try await container.perform { (context: ModelContext) in
                 let lmInput = try await context.processor.prepare(
-                    input: UserInput(prompt: .text(prompt))
+                    input: UserInput(
+                        chat: [
+                            .system(systemInstruction),
+                            .user(prompt)
+                        ],
+                        additionalContext: ["enable_thinking": false]
+                    )
                 )
                 let params = GenerateParameters(
                     maxTokens: maxTokens,
@@ -109,8 +123,19 @@ public actor MLXInferenceEngine: InferenceEngine {
 
                 let end = DispatchTime.now().uptimeNanoseconds
                 let seconds = { (ns: UInt64) in Double(ns) / 1_000_000_000 }
+
+                // Some Qwen3 builds always emit a <think>...</think> reasoning
+                // block before the answer. Strip it so only the continuation
+                // remains. (Proper fix for latency is a non-thinking model; this
+                // keeps output clean regardless.)
+                var clean = out
+                if let r = clean.range(of: "</think>", options: .backwards) {
+                    clean = String(clean[r.upperBound...])
+                }
+                clean = clean.trimmingCharacters(in: .whitespacesAndNewlines)
+
                 return GenStats(
-                    text: out,
+                    text: clean,
                     firstTokenSeconds: seconds((firstTokenNs ?? end) - start),
                     totalSeconds: seconds(end - start),
                     tokenCount: count
