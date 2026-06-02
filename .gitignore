@@ -1,0 +1,13 @@
+# The published GitHub repo tracks the Swift package (app/) only.
+# Everything else stays local.
+/README.md
+/STATUS.md
+/plan/
+/site/
+
+# Build artifacts and OS cruft
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj
+.DS_Store
