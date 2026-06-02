@@ -11,7 +11,7 @@ import CowriterCore
 
 func runSuggestion(for text: String) async {
     let engine = MockInferenceEngine()
-    try? await engine.load(ModelRegistry.model(id: "balanced")!)
+    try? await engine.load(ModelRegistry.model(id: "qwen3-1.7b")!)
 
     let coordinator = SuggestionCoordinator(engine: engine)
     let context = EditingContext(

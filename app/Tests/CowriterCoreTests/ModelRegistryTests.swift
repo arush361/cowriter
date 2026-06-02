@@ -3,7 +3,7 @@ import XCTest
 
 final class ModelRegistryTests: XCTestCase {
     func testLookupByID() {
-        XCTAssertEqual(ModelRegistry.model(id: "small")?.tier, .small)
+        XCTAssertEqual(ModelRegistry.model(id: "qwen3-0.6b")?.tier, .small)
         XCTAssertNil(ModelRegistry.model(id: "nope"))
     }
 

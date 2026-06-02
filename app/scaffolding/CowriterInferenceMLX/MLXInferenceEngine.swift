@@ -32,6 +32,16 @@ public actor MLXInferenceEngine: InferenceEngine {
     public var temperature: Float = 0.2
     public var topP: Float = 0.9
 
+    /// Qwen3 ships as a hybrid reasoning model. For inline autocomplete we MUST
+    /// run it in non-thinking mode, otherwise it emits a `<think>...</think>`
+    /// trace before any usable text and the latency budget is gone.
+    /// VERIFY: how your pinned chat template exposes this. Common options:
+    ///   - apply the chat template with `enable_thinking: false`, or
+    ///   - append `/no_think` to the prompt.
+    /// `PromptBuilder` already emits a bare completion prompt (no chat turns),
+    /// which sidesteps the thinking template, but confirm against your build.
+    public var disableThinking = true
+
     public init(resolveLocalPath: @escaping @Sendable (ModelDescriptor) -> URL) {
         self.resolveLocalPath = resolveLocalPath
     }
