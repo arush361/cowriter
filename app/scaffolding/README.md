@@ -18,13 +18,31 @@ exact version you pin. Every spot that needs checking is marked `// VERIFY:`.
 
 ## What's here
 
+**Inference + benchmark**
+
 | File | Purpose |
 |------|---------|
 | `CowriterInferenceMLX/MLXInferenceEngine.swift` | An `InferenceEngine` backed by MLX, with a streaming hook for the benchmark |
 | `CowriterBench/main.swift` | A CLI that loads each model and measures load time, first-token latency, full-suggestion latency, tokens/sec, and resident memory |
 
-Neither is referenced by `Package.swift`. Nothing in `CowriterCore` depends on
-them. Wiring them in is the step below.
+**The macOS app layer** (`CowriterApp/`) — the GUI + system edges (Phases 2, 4, 5, 6)
+
+| File | Purpose |
+|------|---------|
+| `CowriterApp.swift` | `@main` SwiftUI `MenuBarExtra` agent: menu bar item, pause menu, settings + onboarding scenes |
+| `AppController.swift` | Wires capture -> `SuggestionCoordinator` (real `MLXInferenceEngine`) -> overlay; owns pause/settings state and the debounce |
+| `TextMonitor.swift` | Accessibility capture: `AXObserver` on the focused field, caret geometry, secure-field guard, commit. Emits `EditingContext` |
+| `KeystrokeTap.swift` | `CGEventTap`: Tab-to-accept (swallowed when a suggestion shows), any-other-key-to-dismiss |
+| `GhostTextOverlay.swift` | Borderless click-through `NSPanel` rendering faint ghost text at the caret |
+| `OnboardingView.swift` | First-run flow: welcome -> permission -> model -> try-it |
+| `SettingsView.swift` | Settings window: General, Models, Apps, Privacy |
+| `ModelPaths.swift` | Where weights live on disk (a real `ModelManager` downloads + verifies here) |
+
+Nothing here is referenced by `Package.swift`, and nothing in `CowriterCore`
+depends on it. The app layer consumes the real `CowriterCore` contracts
+(`EditingContext`, `SuggestionCoordinator`, `Settings`, `AppCompatibility`,
+`ModelRegistry`) and the `CowriterInferenceMLX` engine. Assembling it into a
+runnable app is the steps below.
 
 ---
 
@@ -73,7 +91,27 @@ swift build
 swift run cowriter-bench --model-path /path/to/mlx-model --prompt "Thanks for"
 ```
 
-### 5. Record the result
+### 5. Assemble the menu bar app (on your Mac, in Xcode)
+
+The app layer (`CowriterApp/`) cannot be a plain SPM executable: a menu bar agent
+needs an app bundle with an `Info.plist` (`LSUIElement = YES`) and runtime
+permissions. Build it as an Xcode app target:
+
+1. In Xcode: File > New > Project > macOS > App (SwiftUI lifecycle). Name it Cowriter.
+2. Set `Application is agent (UIElement)` to YES in the target's Info (so there is no Dock icon).
+3. Add this Swift package (`app/`) as a local package dependency, linking the
+   `CowriterCore` and `CowriterInferenceMLX` products.
+4. Add the `CowriterApp/*.swift` files to the app target (delete the template `App.swift`).
+5. Enable the Hardened Runtime. Accessibility (AXIsProcessTrusted) does not need a
+   specific entitlement, but the app must be signed and the user must grant it in
+   System Settings > Privacy & Security > Accessibility.
+6. Build and Run. On first launch the onboarding window asks for Accessibility
+   permission, downloads the model, and drops you into the try-it box.
+
+Expect to fix `// VERIFY:` sites against the real AppKit / Accessibility / MLX
+APIs as you go. This code has never been compiled.
+
+### 6. Record the benchmark result
 Put the numbers (first-token latency, tokens/sec, RAM) into
 `../../plan/07-risks-open-questions.md` Q1 and pick the primary backend. The
 target to beat: **first token < 100 ms** on Apple Silicon for the small model.
