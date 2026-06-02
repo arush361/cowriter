@@ -48,13 +48,18 @@ public enum ModelRegistry {
         all.first { $0.id == id }
     }
 
-    /// Recommend a default model given available RAM. Leaves headroom so we never
-    /// recommend a model that would push a machine into swap.
+    /// Recommend a default model for a fresh install, given available RAM.
+    ///
+    /// Policy: **Qwen3-1.7B (medium) is the baseline default for everyone.** It is
+    /// the best quality-per-latency point for inline autocomplete and fits the
+    /// 8 GB-Mac floor. The 4B (large) model is **opt-in only** and is never
+    /// auto-selected, even on high-RAM machines. On machines too constrained for
+    /// the medium model, fall back to 0.6B (small). We leave ~4x headroom over a
+    /// model's resident size so we never push a machine into swap.
     public static func recommendedDefault(ramBytes: UInt64) -> ModelDescriptor {
         let ramMB = Int(ramBytes / (1024 * 1024))
-        // Require roughly 4x the model's resident size in total RAM as headroom.
-        let affordable = all.filter { $0.approxRAMMB * 4 <= ramMB }
-        return affordable.max(by: { $0.tier < $1.tier })
-            ?? all.min(by: { $0.tier < $1.tier })!
+        let medium = all.first { $0.tier == .medium } ?? all[0]
+        let small = all.first { $0.tier == .small } ?? all[0]
+        return medium.approxRAMMB * 4 <= ramMB ? medium : small
     }
 }

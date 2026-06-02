@@ -13,10 +13,18 @@ final class ModelRegistryTests: XCTestCase {
         XCTAssertEqual(rec.tier, .small)
     }
 
-    func testHighRAMGetsLargeModel() {
-        // 32 GB machine.
+    func testHighRAMGetsBalancedDefaultNotLarge() {
+        // 32 GB machine: large (4B) is opt-in only, so the default stays the
+        // balanced 1.7B model even when there is plenty of RAM for 4B.
         let rec = ModelRegistry.recommendedDefault(ramBytes: 32 * 1024 * 1024 * 1024)
-        XCTAssertEqual(rec.tier, .large)
+        XCTAssertEqual(rec.tier, .medium)
+        XCTAssertEqual(rec.id, "qwen3-1.7b")
+    }
+
+    func testEightGBMachineGetsBalancedDefault() {
+        // 8 GB floor: medium needs ~6 GB headroom, which fits.
+        let rec = ModelRegistry.recommendedDefault(ramBytes: 8 * 1024 * 1024 * 1024)
+        XCTAssertEqual(rec.tier, .medium)
     }
 
     func testTinyRAMStillReturnsSomething() {
