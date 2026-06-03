@@ -3,42 +3,42 @@ import Foundation
 /// The set of models the app offers, and logic for picking a sensible default
 /// given the machine's RAM.
 ///
-/// We ship the **Qwen3** family (Apache 2.0), which permits commercial
-/// redistribution inside a paid app, has official MLX 4-bit builds, and spans a
-/// true 0.6B up to 4B so each tier is the same family (one tokenizer + prompt
-/// format). Run these in non-thinking mode (`/no_think`): the hybrid reasoning
-/// trace would blow the inline-latency budget. See plan/03-tech-stack.md.
+/// We ship the **Qwen2.5-Instruct** family (Apache 2.0): commercial-friendly,
+/// official MLX 4-bit builds, and crucially NON-thinking, so it produces clean
+/// inline continuations instead of a `<think>` reasoning trace. (Qwen3 was the
+/// original pick but its 1.7B build forces thinking, which is unusable for
+/// autocomplete - see plan/07 Q2.) One family spans 0.5B -> 3B, same tokenizer.
 ///
 /// `downloadURL` points at the Hugging Face repo. MLX models are multi-file
 /// snapshots resolved by the Hub, not a single checksummed blob, so `sha256` is
 /// a placeholder until the loader verifies per-file digests. RAM/disk figures
-/// are estimates pending the Phase 1 benchmark on real hardware.
+/// are estimates; the 1.5B was measured at ~983 MB resident on Apple Silicon.
 public enum ModelRegistry {
     public static let all: [ModelDescriptor] = [
         ModelDescriptor(
-            id: "qwen3-0.6b",
+            id: "qwen2.5-0.5b",
             displayName: "Fast",
-            approxRAMMB: 700,
-            approxDiskMB: 450,
-            downloadURL: URL(string: "https://huggingface.co/Qwen/Qwen3-0.6B-MLX-4bit")!,
+            approxRAMMB: 600,
+            approxDiskMB: 350,
+            downloadURL: URL(string: "https://huggingface.co/mlx-community/Qwen2.5-0.5B-Instruct-4bit")!,
             sha256: "0000000000000000000000000000000000000000000000000000000000000000",
             tier: .small
         ),
         ModelDescriptor(
-            id: "qwen3-1.7b",
+            id: "qwen2.5-1.5b",
             displayName: "Balanced",
-            approxRAMMB: 1500,
-            approxDiskMB: 1100,
-            downloadURL: URL(string: "https://huggingface.co/Qwen/Qwen3-1.7B-MLX-4bit")!,
+            approxRAMMB: 1300,
+            approxDiskMB: 1000,
+            downloadURL: URL(string: "https://huggingface.co/mlx-community/Qwen2.5-1.5B-Instruct-4bit")!,
             sha256: "0000000000000000000000000000000000000000000000000000000000000000",
             tier: .medium
         ),
         ModelDescriptor(
-            id: "qwen3-4b",
+            id: "qwen2.5-3b",
             displayName: "High quality",
-            approxRAMMB: 3200,
-            approxDiskMB: 2400,
-            downloadURL: URL(string: "https://huggingface.co/Qwen/Qwen3-4B-MLX-4bit")!,
+            approxRAMMB: 2400,
+            approxDiskMB: 1800,
+            downloadURL: URL(string: "https://huggingface.co/mlx-community/Qwen2.5-3B-Instruct-4bit")!,
             sha256: "0000000000000000000000000000000000000000000000000000000000000000",
             tier: .large
         )

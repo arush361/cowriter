@@ -4,7 +4,7 @@ import XCTest
 final class SuggestionCoordinatorTests: XCTestCase {
     private func loadedEngine(delay: Duration = .zero) async -> MockInferenceEngine {
         let engine = MockInferenceEngine(perTokenDelay: delay)
-        try? await engine.load(ModelRegistry.model(id: "qwen3-0.6b")!)
+        try? await engine.load(ModelRegistry.model(id: "qwen2.5-0.5b")!)
         return engine
     }
 

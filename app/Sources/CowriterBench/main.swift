@@ -152,7 +152,7 @@ if args.cpu {
 
 // The bench points every descriptor at the same local dir; in a real run you
 // would supply one directory per model tier.
-let model = ModelRegistry.model(id: "qwen3-0.6b") ?? ModelRegistry.all[0]
+let model = ModelRegistry.model(id: "qwen2.5-0.5b") ?? ModelRegistry.all[0]
 
 do {
     print("Benchmarking \(model.displayName) at \(modelDir.path)")

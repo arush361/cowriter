@@ -3,7 +3,7 @@ import XCTest
 
 final class ModelRegistryTests: XCTestCase {
     func testLookupByID() {
-        XCTAssertEqual(ModelRegistry.model(id: "qwen3-0.6b")?.tier, .small)
+        XCTAssertEqual(ModelRegistry.model(id: "qwen2.5-0.5b")?.tier, .small)
         XCTAssertNil(ModelRegistry.model(id: "nope"))
     }
 
@@ -14,11 +14,11 @@ final class ModelRegistryTests: XCTestCase {
     }
 
     func testHighRAMGetsBalancedDefaultNotLarge() {
-        // 32 GB machine: large (4B) is opt-in only, so the default stays the
-        // balanced 1.7B model even when there is plenty of RAM for 4B.
+        // 32 GB machine: the large tier is opt-in only, so the default stays the
+        // balanced model even when there is plenty of RAM.
         let rec = ModelRegistry.recommendedDefault(ramBytes: 32 * 1024 * 1024 * 1024)
         XCTAssertEqual(rec.tier, .medium)
-        XCTAssertEqual(rec.id, "qwen3-1.7b")
+        XCTAssertEqual(rec.id, "qwen2.5-1.5b")
     }
 
     func testEightGBMachineGetsBalancedDefault() {
