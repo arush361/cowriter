@@ -13,7 +13,23 @@ final class AppController: ObservableObject {
     enum Status: Equatable { case active, generating, paused, needsPermission }
 
     @Published private(set) var status: Status = .needsPermission
-    @Published var settings: Settings
+    // Qualify to avoid colliding with SwiftUI's `Settings` scene type.
+    @Published var settings: CowriterCore.Settings
+
+    /// SF Symbol shown in the menu bar, reflecting current state.
+    var menuBarSymbol: String {
+        switch status {
+        case .active:          return "text.cursor"
+        case .generating:      return "ellipsis"
+        case .paused:          return "pause.circle"
+        case .needsPermission: return "exclamationmark.triangle"
+        }
+    }
+
+    /// Prompt for Accessibility permission (opens System Settings).
+    func requestAccessibilityPermission() {
+        textMonitor.requestAccessibilityPermission()
+    }
 
     private let store = SettingsStore()
     private let coordinator: SuggestionCoordinator
@@ -126,7 +142,7 @@ final class AppController: ObservableObject {
 
     // MARK: - Settings persistence
 
-    func updateSettings(_ newValue: Settings) {
+    func updateSettings(_ newValue: CowriterCore.Settings) {
         settings = newValue
         try? store.save(newValue)
     }

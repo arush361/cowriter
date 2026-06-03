@@ -12,6 +12,12 @@ import CowriterCore
 struct CowriterApp: App {
     @StateObject private var controller = AppController()
 
+    init() {
+        // Run as a menu bar agent (no Dock icon) even when launched as a plain
+        // executable without an LSUIElement Info.plist.
+        NSApplication.shared.setActivationPolicy(.accessory)
+    }
+
     var body: some Scene {
         // The always-present menu bar item. Its icon reflects engine state.
         MenuBarExtra {

@@ -10,7 +10,8 @@
           .library(name: "CowriterCore", targets: ["CowriterCore"]),
           .library(name: "CowriterInferenceMLX", targets: ["CowriterInferenceMLX"]),
           .executable(name: "cowriter-demo", targets: ["CowriterDemo"]),
-          .executable(name: "cowriter-bench", targets: ["CowriterBench"])
+          .executable(name: "cowriter-bench", targets: ["CowriterBench"]),
+          .executable(name: "CowriterApp", targets: ["CowriterApp"])
       ],
       dependencies: [
           // MLX Swift LM libraries (Apple Silicon, Metal). The LLM/VLM libraries
@@ -60,6 +61,14 @@
                   "CowriterInferenceMLX",
                   .product(name: "MLX", package: "mlx-swift")
               ]
+          ),
+          // The menu bar app (SwiftUI + AppKit + Accessibility). Sources live
+          // under scaffolding/ for now. Build/run via xcodebuild (so the MLX
+          // Metal library gets compiled+bundled), not `swift run`.
+          .executableTarget(
+              name: "CowriterApp",
+              dependencies: ["CowriterCore", "CowriterInferenceMLX"],
+              path: "scaffolding/CowriterApp"
           ),
           .testTarget(
               name: "CowriterCoreTests",

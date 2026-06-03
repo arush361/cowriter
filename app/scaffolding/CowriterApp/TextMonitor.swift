@@ -28,8 +28,10 @@ final class TextMonitor {
 
     /// Prompt the user to grant Accessibility permission (opens System Settings).
     func requestAccessibilityPermission() {
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true]
-        _ = AXIsProcessTrustedWithOptions(options as CFDictionary) // VERIFY
+        // Use the literal key string to avoid referencing the global
+        // `kAXTrustedCheckOptionPrompt` (not concurrency-safe under Swift 6).
+        let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
+        _ = AXIsProcessTrustedWithOptions(options)
     }
 
     func start() {
